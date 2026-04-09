@@ -18,18 +18,30 @@ import numpy as np
 # Values represent the expected energy for each pitch class
 
 # Enhanced templates with stronger differentiation
+# Major: root, major third (4 semitones), perfect fifth (7 semitones)
 TEMPLATE_MAJOR = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+
+# Minor: root, minor third (3 semitones), perfect fifth (7 semitones)
 TEMPLATE_MINOR = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
-TEMPLATE_7TH =   [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0]  # Increased 7th from 0.5 to 1.0
-TEMPLATE_7M =    [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-TEMPLATE_SUS2 =  [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
-TEMPLATE_SUS4 =  [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 
-# Half-diminished (m7b5) template - important for jazz
-TEMPLATE_HALF_DIM = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]  # C Eb Gb Bb
+# Dominant 7th: root, major third, perfect fifth, minor seventh (10 semitones)
+# This makes D7 (D-F#-A-C) very different from D#ø (D#-G#-A#-C#)
+TEMPLATE_7TH = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.8]
 
-# Diminished template
-TEMPLATE_DIM = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0]  # C Eb Gb(A)
+# Major 7th: root, major third, perfect fifth, major seventh (11 semitones)
+TEMPLATE_7M = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.8]
+
+# Suspended templates
+TEMPLATE_SUS2 = [1.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+TEMPLATE_SUS4 = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8, 1.0, 0.0, 0.0, 0.0, 0.0]
+
+# Half-diminished (m7b5): root, minor third, diminished fifth (6 semitones), minor seventh
+# C Eb Gb Bb - very different from C major (C E G)
+TEMPLATE_HALF_DIM = [1.0, 0.0, 0.0, 0.8, 0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.8, 0.0]
+
+# Diminished: root, minor third, diminished fifth, diminished seventh (9 semitones)
+# C Eb Gb Bbb(A) - symmetric stack
+TEMPLATE_DIM = [1.0, 0.0, 0.0, 0.8, 0.0, 0.0, 0.8, 0.0, 0.0, 0.8, 0.0, 0.0]
 
 
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']

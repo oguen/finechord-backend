@@ -26,9 +26,11 @@ CHORD_CLASSES = [
     "N",
     "A", "Am", "B", "Bm", "C", "Cm", "D", "Dm", "E", "Em", "F", "Fm", "G", "Gm",
     "A#", "A#m", "C#", "C#m", "D#", "D#m", "F#", "F#m", "G#", "G#m",
-    "A7", "D7", "E7", "G7", "B7",
-    "Asus2", "Asus4", "Dsus4", "Esus4", "Gsus4",
-    "A7M", "C7M", "D7M", "E7M", "F7M", "G7M",
+    "A7", "B7", "C7", "D7", "E7", "F7", "G7",
+    "A7M", "B7M", "C7M", "D7M", "E7M", "F7M", "G7M",
+    "Asus2", "Asus4", "Csus4", "Dsus4", "Esus4", "Fsus4", "Gsus4",
+    "Aø", "Bø", "Cø", "Dø", "Eø", "Fø", "Gø",
+    "Adim", "Bdim", "Cdim", "Ddim", "Edim", "Fdim", "Gdim",
 ]
 
 NUM_CHORD_CLASSES = len(CHORD_CLASSES)
@@ -38,6 +40,7 @@ INDEX_TO_CHORD = {i: chord for i, chord in enumerate(CHORD_CLASSES)}
 
 MAJOR_CHORDS = {"A", "B", "C", "D", "E", "F", "G", "A#", "C#", "D#", "F#", "G#"}
 MINOR_CHORDS = {"Am", "Bm", "Cm", "Dm", "Em", "Fm", "Gm", "A#m", "C#m", "D#m", "F#m", "G#m"}
+SEVENTH_CHORDS = {"A7", "B7", "C7", "D7", "E7", "F7", "G7"}
 
 KEY_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 

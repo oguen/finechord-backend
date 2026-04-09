@@ -13,9 +13,13 @@ def extract_cqt_chroma(audio_path: str) -> np.ndarray:
     """
     Extrait un chromagram basé sur CQT (Constant-Q Transform).
     Meilleure résolution fréquentielle pour la reconnaissance d'accords.
+    Inclut une correction de tuning pour corriger les décalages d'octave.
     Retourne: np.ndarray de shape (12, T)
     """
     y, sr = librosa.load(audio_path, sr=AUDIO_SAMPLE_RATE, mono=True)
+
+    tuning_offset = librosa.estimate_tuning(y=y, sr=sr)
+    print(f"[FeatureExtractor] Detected tuning offset: {tuning_offset:.2f} semitones")
 
     cqt = librosa.cqt(
         y=y,
@@ -32,6 +36,11 @@ def extract_cqt_chroma(audio_path: str) -> np.ndarray:
         n_chroma=CHROMA_N_BINS,
         bins_per_octave=CQT_BINS_PER_OCTAVE,
     )
+
+    if abs(tuning_offset) > 0.05:
+        n_semitones = int(round(tuning_offset))
+        print(f"[FeatureExtractor] Applying chroma shift of {n_semitones} semitones")
+        chroma = np.roll(chroma, -n_semitones, axis=0)
 
     return chroma
 

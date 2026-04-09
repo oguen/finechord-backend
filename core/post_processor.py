@@ -5,6 +5,7 @@ from config import (
     INDEX_TO_CHORD,
     MAJOR_CHORDS,
     MINOR_CHORDS,
+    SEVENTH_CHORDS,
     KEY_ORDER,
     MIN_PROB_THRESHOLD,
     MIN_SEGMENT_DURATION,
@@ -189,7 +190,7 @@ def detect_key(chord_labels: list) -> str:
         if chord == "N":
             continue
 
-        root = chord.rstrip("m7M#sus24")
+        root = chord.rstrip("mM7#sus24ødim")
 
         for i, key_note in enumerate(KEY_ORDER):
             if root == key_note:
@@ -201,15 +202,19 @@ def detect_key(chord_labels: list) -> str:
                     key_scores[key_note] += 2.0
                     key_scores[KEY_ORDER[(i + 7) % 12]] += 1.5
                     key_scores[KEY_ORDER[(i + 3) % 12]] += 1.0
+                elif chord in SEVENTH_CHORDS:
+                    key_scores[key_note] += 2.5
+                    key_scores[KEY_ORDER[(i + 7) % 12]] += 2.5
 
     if not key_scores or max(key_scores.values()) == 0:
         return "C"
 
     detected_key = max(key_scores, key=key_scores.get)
     
-    # Normalize key spelling according to musical conventions
-    # Determine if it's minor based on chord distribution
-    is_minor = sum(1 for c in chord_labels if c in MINOR_CHORDS) > sum(1 for c in chord_labels if c in MAJOR_CHORDS)
+    major_count = sum(1 for c in chord_labels if c in MAJOR_CHORDS or c in SEVENTH_CHORDS)
+    minor_count = sum(1 for c in chord_labels if c in MINOR_CHORDS)
+    
+    is_minor = minor_count > major_count
     
     if is_minor:
         return normalize_key_spelling(detected_key + "m").rstrip("m")
