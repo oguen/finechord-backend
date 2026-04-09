@@ -359,6 +359,164 @@ def combine_key_detections(
     return chord_based_key
 
 
+# ============================================================================
+# PROGRESSION-BASED KEY DETECTION
+# ============================================================================
+# Harmonic patterns that indicate a key
+
+def detect_key_from_progression(chord_labels: list) -> tuple:
+    """
+    Détecte la tonalité en analysant les progressions d'accords.
+    
+    Utilise les patterns cadentiels typiques:
+    - V-I (dominante vers tonique) = indicateur fort
+    - II-V-I (révolution) = indicateur très fort
+    - IV-V-I (authenticité) = indicateur fort
+    - I-V-IV (流行) = indicateur modéré
+    
+    Returns:
+        tuple: (key, confidence, pattern_found)
+    """
+    if not chord_labels or len(chord_labels) < 2:
+        return "C", 0.0, None
+    
+    # Extract roots and qualities
+    chords = []
+    for chord in chord_labels:
+        if chord == "N":
+            chords.append(("N", None))
+            continue
+        
+        # Parse chord
+        root = chord.rstrip("mM7sus24ødim#")
+        is_minor = "m" in chord and "7M" not in chord and "7" not in chord
+        is_7th = "7" in chord and "7M" not in chord
+        is_7M = "7M" in chord
+        
+        chords.append((root, {
+            'is_minor': is_minor,
+            'is_7th': is_7th,
+            'is_7M': is_7M,
+            'raw': chord
+        }))
+    
+    # Scoring function for a key
+    def score_key(key_note: str) -> float:
+        score = 0.0
+        
+        # Build diatonic chords for this key
+        major_scale = [
+            (0, 'major'), (2, 'minor'), (4, 'minor'), (5, 'major'), (7, 'major'), (7, 'minor'), (9, 'dim')
+        ]
+        
+        key_idx = KEY_ORDER.index(key_note) if key_note in KEY_ORDER else 0
+        
+        # First and last chord are weighted more heavily (tonic position)
+        n = len(chords)
+        
+        # Score each chord in the progression
+        for i, (root, quality) in enumerate(chords):
+            if root == "N" or root not in KEY_ORDER:
+                continue
+            
+            root_idx = KEY_ORDER.index(root)
+            
+            # Calculate scale degree
+            degree = (root_idx - key_idx) % 12
+            
+            # Weight: chords at beginning/end are more important
+            position_weight = 1.0
+            if i == 0:  # First chord - very important
+                position_weight = 3.0
+            elif i == n - 1:  # Last chord - important
+                position_weight = 2.0
+            elif i == 1:  # Second chord - moderately important
+                position_weight = 1.5
+            
+            # Check if chord is diatonic to this key
+            is_diatonic = False
+            for scale_degree, chord_type in major_scale:
+                if degree == scale_degree:
+                    is_diatonic = True
+                    # Bonus for diatonic chords
+                    score += 1.0 * position_weight
+                    
+                    # Extra points for strong harmonic function
+                    if degree == 0:  # Tonic (I)
+                        score += 2.0 * position_weight
+                    elif degree == 7:  # Dominant (V)
+                        score += 1.5 * position_weight
+                        # Extra if it's a 7th chord (V7)
+                        if quality and quality.get('is_7th'):
+                            score += 0.5
+                    elif degree == 5 or degree == 4:  # Subdominant (IV or II)
+                        score += 1.0 * position_weight
+                    break
+            
+            if not is_diatonic:
+                score -= 0.5 * position_weight
+        
+        # Look for cadential patterns
+        for i in range(len(chords) - 1):
+            curr_root, curr_qual = chords[i]
+            next_root, next_qual = chords[i + 1]
+            
+            if curr_root == "N" or next_root == "N":
+                continue
+            
+            curr_idx = KEY_ORDER.index(curr_root) if curr_root in KEY_ORDER else -1
+            next_idx = KEY_ORDER.index(next_root) if next_root in KEY_ORDER else -1
+            
+            if curr_idx < 0 or next_idx < 0:
+                continue
+            
+            interval = (next_idx - curr_idx) % 12
+            
+            # V-I cadence (7 semitones up = dominant to tonic)
+            if interval == 7:
+                score += 3.0  # Strong cadence indicator
+            
+            # IV-I or II-V patterns
+            if interval == 5:  # IV to I
+                score += 2.0
+            
+            if interval == 5:  # II to V (in context of V-I)
+                score += 1.0
+        
+        return score
+    
+    # Score all possible keys
+    best_key = "C"
+    best_score = -float('inf')
+    scores = {}
+    
+    for key_note in KEY_ORDER:
+        score = score_key(key_note)
+        scores[key_note] = score
+        if score > best_score:
+            best_score = score
+            best_key = key_note
+    
+    # Special case: if first chord is a strong candidate, boost it
+    first_chord = chords[0][0] if chords else None
+    if first_chord and first_chord in KEY_ORDER:
+        first_note = first_chord.rstrip("mM7sus24ødim#")
+        if first_note in KEY_ORDER:
+            # If the first chord is a potential key
+            first_score = scores.get(first_note, 0)
+            if first_score >= best_score * 0.7:  # First chord is competitive
+                best_key = first_note
+                best_score = first_score
+    
+    # Normalize the key spelling
+    best_key = normalize_key_spelling(best_key)
+    
+    # Calculate confidence (normalized score)
+    confidence = min(1.0, max(0.0, best_score / (len(chords) * 3)))
+    
+    return best_key, confidence, "progression"
+
+
 def chord_to_roman(chord: str, key: str) -> str:
     """
     Convertit un accord en chiffre romain relatif à la tonalité.

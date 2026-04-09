@@ -17,12 +17,19 @@ import numpy as np
 # Each template is a 12-element vector (C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
 # Values represent the expected energy for each pitch class
 
+# Enhanced templates with stronger differentiation
 TEMPLATE_MAJOR = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 TEMPLATE_MINOR = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
-TEMPLATE_7TH =   [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.5, 0.0]
-TEMPLATE_7M =    [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.5]
+TEMPLATE_7TH =   [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0]  # Increased 7th from 0.5 to 1.0
+TEMPLATE_7M =    [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
 TEMPLATE_SUS2 =  [1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 TEMPLATE_SUS4 =  [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+
+# Half-diminished (m7b5) template - important for jazz
+TEMPLATE_HALF_DIM = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]  # C Eb Gb Bb
+
+# Diminished template
+TEMPLATE_DIM = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0]  # C Eb Gb(A)
 
 
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -37,7 +44,7 @@ for root_idx, root_name in enumerate(NOTE_NAMES):
     CHORD_DEFINITIONS[root_name] = np.roll(TEMPLATE_MAJOR, root_idx).tolist()
     # Minor
     CHORD_DEFINITIONS[f'{root_name}m'] = np.roll(TEMPLATE_MINOR, root_idx).tolist()
-    # 7th
+    # 7th (dominant 7th)
     CHORD_DEFINITIONS[f'{root_name}7'] = np.roll(TEMPLATE_7TH, root_idx).tolist()
     # Major 7th
     CHORD_DEFINITIONS[f'{root_name}7M'] = np.roll(TEMPLATE_7M, root_idx).tolist()
@@ -45,6 +52,11 @@ for root_idx, root_name in enumerate(NOTE_NAMES):
     CHORD_DEFINITIONS[f'{root_name}sus2'] = np.roll(TEMPLATE_SUS2, root_idx).tolist()
     # Sus4
     CHORD_DEFINITIONS[f'{root_name}sus4'] = np.roll(TEMPLATE_SUS4, root_idx).tolist()
+    # Half-diminished (m7b5)
+    CHORD_DEFINITIONS[f'{root_name}ø'] = np.roll(TEMPLATE_HALF_DIM, root_idx).tolist()
+    CHORD_DEFINITIONS[f'{root_name}m7b5'] = np.roll(TEMPLATE_HALF_DIM, root_idx).tolist()
+    # Diminished
+    CHORD_DEFINITIONS[f'{root_name}dim'] = np.roll(TEMPLATE_DIM, root_idx).tolist()
 
 
 # Rhythmic resolution mapping: how many subdivisions per beat
