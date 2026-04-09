@@ -17,6 +17,106 @@ from config import (
 )
 
 
+# ============================================================================
+# ENHARMONIC CONVERSION FOR KEY DETECTION
+# ============================================================================
+# Keys that use sharps: G, D, A, E, B, F#, C# (major and their relative minors)
+# Keys that use flats: F, Bb, Eb, Ab, Db, Gb, Cb (major and their relative minors)
+# When a sharp key is detected, use sharps; when a flat key is detected, use flats
+
+SHARP_KEYS = {"G", "D", "A", "E", "B", "F#", "C#", "Em", "Bm", "F#m", "C#m", "G#m", "D#m", "A#m"}
+
+# Conversion from sharps to flats for keys that should use flats
+SHARP_TO_FLAT_KEY = {
+    "C#": "Db", "C#m": "Dbm",
+    "D#": "Eb", "D#m": "Ebm",
+    "G#": "Ab", "G#m": "Abm",
+    "A#": "Bb", "A#m": "Bbm",
+}
+
+# Conversion from flats to sharps for keys that should use sharps
+FLAT_TO_SHARP_KEY = {v: k for k, v in SHARP_TO_FLAT_KEY.items()}
+
+
+def normalize_key_spelling(key: str) -> str:
+    """
+    Normalise l'orthographe d'une clé musicale selon les conventions:
+    - Clés avec dièses: G, D, A, E, B, F#, C# → Garder les dièses
+    - Clés avec bémols: F, Bb, Eb, Ab, Db, Gb, Cb → Utiliser les bémols
+    
+    Example:
+    - "A#" détectée → retourner "Bb" (car la clé de Bb utilise des bémols)
+    - "F#" détectée → garder "F#" (car la clé de F# utilise des dièses)
+    """
+    if not key:
+        return key
+    
+    # Handle minor keys (ends with 'm' but not '7M', '7', 'sus')
+    is_minor = key.endswith("m") and not any(x in key for x in ["7", "sus", "dim", "aug"])
+    
+    # Extract root note (remove 'm' for minor keys)
+    root = key[:-1] if is_minor else key
+    suffix = key[len(root):] if len(root) < len(key) else ""
+    
+    # If it's a sharp key, keep sharps
+    if root in SHARP_KEYS:
+        return key
+    
+    # If it's a flat key that was detected with sharps, convert
+    if root in SHARP_TO_FLAT_KEY:
+        normalized_root = SHARP_TO_FLAT_KEY[root]
+        return normalized_root + suffix
+    
+    return key
+
+
+def get_key_index_for_roman(key: str) -> int:
+    """
+    Retourne l'index de la clé dans KEY_ORDER pour les calculs de chiffres romains.
+    Gère les conversions enharmoniques (Bb → A#, Eb → D#, etc.)
+    """
+    # First try direct lookup
+    if key in KEY_ORDER:
+        return KEY_ORDER.index(key)
+    
+    # If not found, try flat to sharp conversion
+    if key in FLAT_TO_SHARP_KEY:
+        sharp_key = FLAT_TO_SHARP_KEY[key]
+        if sharp_key in KEY_ORDER:
+            return KEY_ORDER.index(sharp_key)
+    
+    # Default to C
+    return 0
+
+
+def normalize_chord_spelling(chord: str) -> str:
+    """
+    Normalise l'orthographe d'un accord selon les conventions harmoniques.
+    """
+    if not chord or chord == "N":
+        return chord
+    
+    # Extract root and quality
+    root = chord.rstrip("mM7sus24#")
+    
+    # Handle the sharp/flat in root
+    if len(root) > 1 and root[-1] in "#b":
+        suffix = chord[len(root):]
+        accidental = root[-1]
+        note = root[:-1]
+        
+        # Keys that prefer sharps
+        if note in SHARP_KEYS and accidental == "#":
+            return chord  # Keep sharp notation
+        
+        # Keys that prefer flats
+        if note in SHARP_TO_FLAT_KEY and accidental == "#":
+            flat_note = SHARP_TO_FLAT_KEY.get(root, root)
+            return flat_note + suffix
+    
+    return chord
+
+
 def smooth_with_hmm(
     chord_times: np.ndarray,
     chord_labels: list,
@@ -81,7 +181,7 @@ def detect_key(chord_labels: list) -> str:
     """
     Détecte la tonalité dominante d'un morceau en analysant
     la distribution des accords majeurs et mineurs.
-    Retourne: la note fondamentale (ex: "C", "G", "F#")
+    Retourne: la note fondamentale (ex: "C", "G", "F#", "Bb")
     """
     key_scores = {key: 0.0 for key in KEY_ORDER}
 
@@ -105,7 +205,16 @@ def detect_key(chord_labels: list) -> str:
     if not key_scores or max(key_scores.values()) == 0:
         return "C"
 
-    return max(key_scores, key=key_scores.get)
+    detected_key = max(key_scores, key=key_scores.get)
+    
+    # Normalize key spelling according to musical conventions
+    # Determine if it's minor based on chord distribution
+    is_minor = sum(1 for c in chord_labels if c in MINOR_CHORDS) > sum(1 for c in chord_labels if c in MAJOR_CHORDS)
+    
+    if is_minor:
+        return normalize_key_spelling(detected_key + "m").rstrip("m")
+    else:
+        return normalize_key_spelling(detected_key)
 
 
 def detect_key_from_chroma(chroma: np.ndarray, profile_type: str = "krumhansl") -> tuple:
@@ -176,6 +285,12 @@ def detect_key_from_chroma(chroma: np.ndarray, profile_type: str = "krumhansl") 
     
     # Calculate confidence based on correlation
     confidence = min(1.0, best_correlation * 2) if best_correlation > 0 else MIN_KEY_CONFIDENCE
+    
+    # Normalize key spelling (sharps vs flats) according to musical conventions
+    if best_mode == "minor":
+        best_key = normalize_key_spelling(best_key + "m").rstrip("m")
+    else:
+        best_key = normalize_key_spelling(best_key)
     
     return best_key, best_mode, confidence, best_correlation
 
@@ -263,7 +378,7 @@ def chord_to_roman(chord: str, key: str) -> str:
         return chord
 
     root_idx = KEY_ORDER.index(root)
-    key_idx = KEY_ORDER.index(key)
+    key_idx = get_key_index_for_roman(key)
     degree = (root_idx - key_idx) % 12
 
     roman_map = {
