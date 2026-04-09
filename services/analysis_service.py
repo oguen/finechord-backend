@@ -22,6 +22,9 @@ from core.chord_templates import predict_chords_beat_sync
 from core.post_processor import (
     merge_short_segments,
     detect_key,
+    detect_key_from_chroma,
+    detect_key_from_audio,
+    combine_key_detections,
     build_analysis_result,
 )
 from core.bass_detector import detect_bass_for_intervals
@@ -141,11 +144,19 @@ class AnalysisService:
 
             beat_times_synced, beat_chords = sync_chords_to_beats(chord_times, chord_labels, beat_times)
 
-            key = detect_key(chord_labels)
+            # Improved key detection using both chord distribution and chroma features
+            chord_based_key = detect_key(chord_labels)
+            chroma_key, chroma_mode, chroma_confidence, chroma_corr = detect_key_from_chroma(chroma)
+            
+            # Combine both methods for better accuracy
+            key = combine_key_detections(chord_based_key, chroma_key, chroma_confidence)
+            
             confidence = float(np.mean(chord_probs)) if len(chord_probs) > 0 else 0.0
 
-            print(f"[AnalysisService] Key detected: {key}")
-            print(f"[AnalysisService] Confidence: {confidence:.3f}")
+            print(f"[AnalysisService] Key detected (chord-based): {chord_based_key}")
+            print(f"[AnalysisService] Key detected (chroma-based): {chroma_key} ({chroma_mode}), confidence: {chroma_confidence:.3f}")
+            print(f"[AnalysisService] Final key: {key}")
+            print(f"[AnalysisService] Chord confidence: {confidence:.3f}")
         except Exception as e:
             print(f"[AnalysisService] ERROR at step 5 (predict chords): {e}")
             traceback.print_exc()

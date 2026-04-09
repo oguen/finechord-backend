@@ -8,6 +8,12 @@ from config import (
     KEY_ORDER,
     MIN_PROB_THRESHOLD,
     MIN_SEGMENT_DURATION,
+    KRUMSHANSL_MAJOR,
+    KRUMSHANSL_MINOR,
+    TEMPERLEY_MAJOR,
+    TEMPERLEY_MINOR,
+    KEY_CORRELATION_WINDOW,
+    MIN_KEY_CONFIDENCE,
 )
 
 
@@ -100,6 +106,142 @@ def detect_key(chord_labels: list) -> str:
         return "C"
 
     return max(key_scores, key=key_scores.get)
+
+
+def detect_key_from_chroma(chroma: np.ndarray, profile_type: str = "krumhansl") -> tuple:
+    """
+    Détecte la tonalité en utilisant les chroma features et les profiles Krumhansl.
+    
+    Args:
+        chroma: np.ndarray de shape (12, T) - features chroma
+        profile_type: "krumhansl", "temperley", ou "edma"
+    
+    Returns:
+        tuple: (key_note, mode, confidence, correlation)
+            - key_note: note de la tonalité (ex: "C", "G#")
+            - mode: "major" ou "minor"
+            - confidence: confiance de la détection (0-1)
+            - correlation: correlation maximale avec le profile
+    """
+    if chroma is None or chroma.size == 0:
+        return "C", "major", 0.0, 0.0
+    
+    # Temporal averaging - moyenne des chroma sur le temps
+    chroma_profile = np.mean(chroma, axis=1)
+    
+    # Normalize
+    chroma_profile = chroma_profile / (np.sum(chroma_profile) + 1e-10)
+    
+    # Select profile
+    if profile_type == "krumhansl":
+        major_profile = np.array(KRUMSHANSL_MAJOR)
+        minor_profile = np.array(KRUMSHANSL_MINOR)
+    elif profile_type == "temperley":
+        major_profile = np.array(TEMPERLEY_MAJOR)
+        minor_profile = np.array(TEMPERLEY_MINOR)
+    else:
+        major_profile = np.array(KRUMSHANSL_MAJOR)
+        minor_profile = np.array(KRUMSHANSL_MINOR)
+    
+    # Normalize profiles
+    major_profile = major_profile / (np.sum(major_profile) + 1e-10)
+    minor_profile = minor_profile / (np.sum(minor_profile) + 1e-10)
+    
+    best_key = "C"
+    best_mode = "major"
+    best_correlation = -1.0
+    
+    # Test each possible key (0 = C, 1 = C#, ..., 11 = B)
+    for shift in range(12):
+        # Circular shift of chroma profile
+        shifted_chroma = np.roll(chroma_profile, shift)
+        
+        # Correlation with major profile
+        major_corr = np.corrcoef(shifted_chroma, major_profile)[0, 1]
+        # Correlation with minor profile  
+        minor_corr = np.corrcoef(shifted_chroma, minor_profile)[0, 1]
+        
+        if major_corr > best_correlation:
+            best_correlation = major_corr
+            best_key = KEY_ORDER[shift]
+            best_mode = "major"
+        
+        if minor_corr > best_correlation:
+            best_correlation = minor_corr
+            best_key = KEY_ORDER[shift]
+            best_mode = "minor"
+    
+    # Ensure correlation is positive
+    best_correlation = max(0, best_correlation)
+    
+    # Calculate confidence based on correlation
+    confidence = min(1.0, best_correlation * 2) if best_correlation > 0 else MIN_KEY_CONFIDENCE
+    
+    return best_key, best_mode, confidence, best_correlation
+
+
+def detect_key_from_audio(audio_path: str, profile_type: str = "krumhansl") -> tuple:
+    """
+    Détecte la tonalité directement depuis un fichier audio.
+    Utilise librosa pour extraire les chroma features.
+    
+    Args:
+        audio_path: chemin vers le fichier audio
+        profile_type: "krumhansl", "temperley", ou "edma"
+    
+    Returns:
+        tuple: (key_note, mode, confidence, correlation)
+    """
+    try:
+        import librosa
+        
+        # Load audio
+        y, sr = librosa.load(audio_path, sr=22050, mono=True)
+        
+        # Extract chroma features
+        chroma = librosa.feature.chroma_cqt(y=y, sr=sr, n_chroma=12)
+        
+        return detect_key_from_chroma(chroma, profile_type)
+        
+    except Exception as e:
+        print(f"[KeyDetection] Error: {e}")
+        return "C", "major", 0.0, 0.0
+
+
+def combine_key_detections(
+    chord_based_key: str,
+    chroma_based_key: str,
+    chroma_confidence: float,
+    chord_weight: float = 0.4,
+    chroma_weight: float = 0.6
+) -> str:
+    """
+    Combine les detections de tonalité basées sur les accords et les chroma features.
+    
+    Args:
+        chord_based_key: tonalité détectée depuis les accords
+        chroma_based_key: tonalité détectée depuis les chroma features
+        chroma_confidence: confiance de la détection chroma (0-1)
+        chord_weight: poids pour la detection accord (défaut: 0.4)
+        chroma_weight: poids pour la detection chroma (défaut: 0.6)
+    
+    Returns:
+        str: tonalité finale
+    """
+    # If chroma detection is confident, trust it more
+    if chroma_confidence > 0.7:
+        return chroma_based_key
+    
+    # If both agree, return either
+    if chord_based_key == chroma_based_key:
+        return chord_based_key
+    
+    # Use weighted average based on confidence
+    if chroma_confidence > 0.5:
+        return chroma_based_key
+    
+    # Low confidence - prefer chord-based (more musically informed)
+    return chord_based_key
 
 
 def chord_to_roman(chord: str, key: str) -> str:

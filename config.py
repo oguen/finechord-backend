@@ -41,6 +41,31 @@ MINOR_CHORDS = {"Am", "Bm", "Cm", "Dm", "Em", "Fm", "Gm", "A#m", "C#m", "D#m", "
 
 KEY_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
+# ============================================================================
+# KEY DETECTION - Krumhansl-Schmuckler Profiles
+# ============================================================================
+# Profiles for major and minor keys based on cognitive experiments
+# Source: Krumhansl, C. "Cognitive Foundations of Musical Pitch"
+
+KRUMSHANSL_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
+KRUMSHANSL_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+
+# Temperley profiles (from corpus analysis of classical music)
+TEMPERLEY_MAJOR = [5.0, 2.0, 3.5, 2.0, 4.5, 4.0, 2.0, 4.5, 2.0, 3.5, 1.5, 2.0]
+TEMPERLEY_MINOR = [5.0, 2.0, 3.5, 4.5, 2.0, 4.0, 2.5, 4.5, 3.0, 1.5, 3.5, 1.5]
+
+# EDM profiles (for electronic/pop music)
+EDMA_MAJOR = [4.5, 1.5, 3.0, 1.5, 4.0, 3.5, 1.5, 4.0, 2.0, 3.0, 1.5, 2.5]
+EDMA_MINOR = [4.5, 1.5, 3.5, 4.0, 2.0, 3.5, 2.0, 4.0, 3.5, 1.5, 3.0, 1.5]
+
+# Default profile for piano music
+DEFAULT_KEY_PROFILE = "krumhansl"
+
+# Key profile correlation settings
+KEY_CORRELATION_WINDOW = 120  # seconds of audio to analyze
+TUNING_STEP = 5.0  # cents for tuning correction
+MIN_KEY_CONFIDENCE = 0.3  # minimum correlation to accept key
+
 ROMAN_NUMERALS_MAJOR = {
     "C": "I", "C#": "I", "D": "II", "D#": "III", "E": "III", "F": "IV",
     "F#": "V", "G": "V", "G#": "VI", "A": "VI", "A#": "VII", "B": "VII",
