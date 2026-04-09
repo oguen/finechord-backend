@@ -19,3 +19,6 @@ torchaudio==2.6.0
 
 # Source Separation
 demucs==4.0.1
+
+# MIDI Export
+mido==1.3.3
